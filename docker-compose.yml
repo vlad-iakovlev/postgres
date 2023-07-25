@@ -11,7 +11,7 @@ services:
     ports:
       - 127.0.0.1:5432:5432
     volumes:
-      - $PWD/db:/data/db
+      - $PWD/db:/var/lib/postgresql/data
     env_file: .env
     restart: always
 
