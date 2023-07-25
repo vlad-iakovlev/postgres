@@ -1,0 +1,38 @@
+networks:
+  vlad-yakovlev-dev:
+    name: vlad-yakovlev-dev
+
+services:
+  postgres:
+    image: postgres:13
+    pull_policy: always
+    networks:
+      - vlad-yakovlev-dev
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - $PWD/db:/data/db
+    env_file: .env
+    restart: always
+
+  postgres-backup:
+    image: ghcr.io/tiredofit/docker-db-backup:latest
+    pull_policy: always
+    networks:
+      - vlad-yakovlev-dev
+    volumes:
+      - $PWD/backups:/backups
+    env_file: .env
+    environment:
+      CONTAINER_ENABLE_MONITORING: FALSE
+      DB_TYPE: pgsql
+      DB_HOST: postgres
+      DB_NAME: ALL
+      DB_USER: postgres
+      DB_PASS: $POSTGRES_PASSWORD
+      DB_DUMP_TARGET: /backups
+      # Backup every hour
+      DB_DUMP_FREQ: 60
+      # Cleanup backups older than 10 days
+      DB_CLEANUP_TIME: 14400
+    restart: always
