@@ -27,4 +27,4 @@ jobs:
             cd Projects/postgres
             git fetch --prune --prune-tags --verbose
             git checkout $SHA
-            docker compose up -d
+            docker compose up -d --build

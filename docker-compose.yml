@@ -15,6 +15,23 @@ services:
     env_file: .env
     restart: always
 
+  postgres-dbs:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres-dbs
+    depends_on:
+      - postgres
+    networks:
+      - vlad-yakovlev-dev
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file: .env
+    environment:
+      PGHOST: postgres
+      PGUSER: postgres
+      PGPASSWORD: $POSTGRES_PASSWORD
+    restart: always
+
   postgres-backup:
     image: ghcr.io/tiredofit/docker-db-backup:latest
     pull_policy: always

@@ -1,0 +1,7 @@
+FROM alpine:latest
+
+RUN apk add --no-cache bash docker-cli postgresql-client
+COPY postgres-dbs.sh /usr/local/bin/postgres-dbs.sh
+RUN chmod +x /usr/local/bin/postgres-dbs.sh
+
+CMD /usr/local/bin/postgres-dbs.sh
