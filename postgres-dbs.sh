@@ -10,21 +10,13 @@ function parse_db_url {
   dbname=$(echo "$db_url" | awk -F[/] '{print $4}' | cut -d'?' -f1)
 }
 
-function handle_container {
-  local container_id=$1
-  local envs
-  local db_url
+function handle_db_url {
+  local db_url=$1
   local protocol
   local username
   local password
   local dbname
 
-  if ! envs=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$container_id"); then
-    echo "Failed to inspect container $container_id"
-    return 0
-  fi
-
-  db_url=$(echo "$envs" | grep DATABASE_URL | cut -d'=' -f2)
   parse_db_url "$db_url"
 
   if [ "$protocol" != "postgresql" ]; then
@@ -32,19 +24,30 @@ function handle_container {
   fi
 
   if ! psql -c "CREATE ROLE $username WITH LOGIN PASSWORD '$password';"; then
-    echo "Failed to create role \"$username\" for container $container_id"
-    return 0
+    echo "Failed to create role \"$username\""
   fi
 
   if ! psql -c "CREATE DATABASE $dbname WITH OWNER $PGUSER;"; then
-    echo "Failed to create database \"$dbname\" for container $container_id"
-    return 0
+    echo "Failed to create database \"$dbname\""
   fi
 
   if ! psql -c "GRANT ALL PRIVILEGES ON DATABASE $dbname TO $username;"; then
-    echo "Failed to grant privileges for container $container_id"
+    echo "Failed to grant privileges for \"$username\""
+  fi
+}
+
+function handle_container {
+  local container_id=$1
+  local envs
+  local db_url
+
+  if ! envs=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$container_id"); then
+    echo "Failed to inspect container $container_id"
     return 0
   fi
+
+  handle_db_url "$(echo "$envs" | grep "^DATABASE_URL=" | cut -d'=' -f2)"
+  handle_db_url "$(echo "$envs" | grep "^SHADOW_DATABASE_URL=" | cut -d'=' -f2)"
 }
 
 # Wait for PostgreSQL to start
