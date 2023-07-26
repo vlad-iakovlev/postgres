@@ -1,43 +1,65 @@
 #!/bin/bash
-set -e
+
+function parse_db_url {
+  local db_url=$1
+  local creds
+  protocol=$(echo "$db_url" | awk -F:// '{print $1}')
+  creds=$(echo "$db_url" | awk -F[/:@] '{print $4, $5}')
+  username=$(echo "$creds" | cut -d' ' -f1)
+  password=$(echo "$creds" | cut -d' ' -f2)
+  dbname=$(echo "$db_url" | awk -F[/] '{print $4}' | cut -d'?' -f1)
+}
 
 function handle_container {
   local container_id=$1
-  {
-    local envs=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$container_id")
-    local db_url=$(echo "$envs" | grep DATABASE_URL | cut -d'=' -f2)
+  local envs
+  local db_url
+  local protocol
+  local username
+  local password
+  local dbname
 
-    local protocol=$(echo $db_url | awk -F:// '{print $1}')
+  if ! envs=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$container_id"); then
+    echo "Failed to inspect container $container_id"
+    return 0
+  fi
 
-    if [ "$protocol" != "postgresql" ]; then
-      return
-    fi
+  db_url=$(echo "$envs" | grep DATABASE_URL | cut -d'=' -f2)
+  parse_db_url "$db_url"
 
-    local creds=$(echo $db_url | awk -F[/:@] '{print $4, $5}')
-    local username=$(echo $creds | cut -d' ' -f1)
-    local password=$(echo $creds | cut -d' ' -f2)
-    local dbname=$(echo $db_url | awk -F[/] '{print $4}' | cut -d'?' -f1)
+  if [ "$protocol" != "postgresql" ]; then
+    return 0
+  fi
 
-    psql -c "CREATE ROLE $username WITH LOGIN PASSWORD '$password';"
-    psql -c "CREATE DATABASE $dbname WITH OWNER $PGUSER;"
-    psql -c "GRANT ALL PRIVILEGES ON DATABASE $dbname TO $username;"
-  } || {
-    echo "An error occurred while handling container $container_id"
-  }
+  if ! psql -c "CREATE ROLE $username WITH LOGIN PASSWORD '$password';"; then
+    echo "Failed to create role \"$username\" for container $container_id"
+    return 0
+  fi
+
+  if ! psql -c "CREATE DATABASE $dbname WITH OWNER $PGUSER;"; then
+    echo "Failed to create database \"$dbname\" for container $container_id"
+    return 0
+  fi
+
+  if ! psql -c "GRANT ALL PRIVILEGES ON DATABASE $dbname TO $username;"; then
+    echo "Failed to grant privileges for container $container_id"
+    return 0
+  fi
 }
 
 # Wait for PostgreSQL to start
-while ! pg_isready -h $PGHOST -U $PGUSER >/dev/null 2>&1; do
+while ! pg_isready -h "$PGHOST" -U "$PGUSER" >/dev/null 2>&1; do
   echo "Waiting for PostgreSQL to start..."
   sleep 1
 done
 
 # Handle all currently running containers
 for container_id in $(docker ps -q); do
-  handle_container $container_id
+  handle_container "$container_id"
 done
 
 # Handle containers started in the future
-docker events --filter 'type=container' --filter 'event=start' | while read -r timestamp type action container_id rest; do
-  handle_container $container_id
-done
+docker events --filter 'type=container' --filter 'event=start' |
+  while read -r timestamp type action container_id rest; do
+    handle_container "$container_id"
+  done
