@@ -26,6 +26,12 @@ function handle_container {
   }
 }
 
+# Wait for PostgreSQL to start
+while ! pg_isready -h $PGHOST -U $PGUSER >/dev/null 2>&1; do
+  echo "Waiting for PostgreSQL to start..."
+  sleep 1
+done
+
 # Handle all currently running containers
 for container_id in $(docker ps -q); do
   handle_container $container_id

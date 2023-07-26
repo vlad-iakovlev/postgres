@@ -19,8 +19,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.postgres-dbs
-    depends_on:
-      - postgres
     networks:
       - vlad-yakovlev-dev
     volumes:
@@ -35,8 +33,6 @@ services:
   postgres-backup:
     image: ghcr.io/tiredofit/docker-db-backup:latest
     pull_policy: always
-    depends_on:
-      - postgres
     networks:
       - vlad-yakovlev-dev
     volumes:
