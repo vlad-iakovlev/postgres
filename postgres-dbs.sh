@@ -23,8 +23,12 @@ function handle_db_url {
     return 0
   fi
 
-  if ! psql -c "CREATE ROLE $username WITH LOGIN PASSWORD '$password';"; then
+  if ! psql -c "CREATE ROLE $username;"; then
     echo "Failed to create role \"$username\""
+  fi
+
+  if ! psql -c "ALTER ROLE $username WITH LOGIN PASSWORD '$password';"; then
+    echo "Failed to set password for \"$username\""
   fi
 
   if ! psql -c "CREATE DATABASE $dbname WITH OWNER $PGUSER;"; then
@@ -32,7 +36,7 @@ function handle_db_url {
   fi
 
   if ! psql -c "GRANT ALL PRIVILEGES ON DATABASE $dbname TO $username;"; then
-    echo "Failed to grant privileges for \"$username\""
+    echo "Failed to grant privileges for \"$username\" to access \"$dbname\""
   fi
 }
 
