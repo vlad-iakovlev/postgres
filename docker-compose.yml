@@ -1,13 +1,13 @@
 networks:
-  vlad-yakovlev-dev:
-    name: vlad-yakovlev-dev
+  vlad-iakovlev-dev:
+    name: vlad-iakovlev-dev
 
 services:
   postgres:
     image: postgres:13
     pull_policy: always
     networks:
-      - vlad-yakovlev-dev
+      - vlad-iakovlev-dev
     ports:
       - 127.0.0.1:5432:5432
     volumes:
@@ -20,7 +20,7 @@ services:
       context: .
       dockerfile: Dockerfile.postgres-dbs
     networks:
-      - vlad-yakovlev-dev
+      - vlad-iakovlev-dev
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     env_file: .env
@@ -34,7 +34,7 @@ services:
     image: ghcr.io/tiredofit/docker-db-backup:latest
     pull_policy: always
     networks:
-      - vlad-yakovlev-dev
+      - vlad-iakovlev-dev
     volumes:
       - $PWD/backups:/backups
     env_file: .env
